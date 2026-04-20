@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>聊天記錄分析工具</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=Noto+Sans+TC:wght@300;400;500&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root {
+  --bg: #fdf6f9;
+  --bg2: #fef0f5;
+  --card: #ffffff;
+  --rose: #e8547a;
+  --rose2: #d4426a;
+  --pink: #f2a7bf;
+  --pink2: #f9d0df;
+  --lilac: #c9a7e8;
+  --lilac2: #ede0f9;
+  --mauve: #9b6bbd;
+  --text: #2a1520;
+  --text2: #6b3a50;
+  --text3: #b08a99;
+  --border: rgba(232,84,122,0.14);
+  --shadow: 0 4px 24px rgba(180,80,120,0.10);
+  --shadow2: 0 2px 12px rgba(180,80,120,0.07);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:'Noto Sans TC',sans-serif;min-height:100vh;overflow-x:hidden}
+
+/* ── HEADER ── */
+header{background:linear-gradient(135deg,#f9d0df 0%,#ede0f9 50%,#fde8f0 100%);padding:0;position:relative;overflow:hidden;border-bottom:1px solid var(--border)}
+.header-inner{max-width:960px;margin:0 auto;padding:2.5rem 2rem 2rem;display:grid;grid-template-columns:1fr auto;align-items:end;gap:2rem}
+.header-kicker{font-size:.72rem;letter-spacing:.18em;text-transform:uppercase;color:var(--rose);font-weight:500;margin-bottom:.5rem}
+header h1{font-family:'Playfair Display',serif;font-size:2.6rem;font-weight:700;color:var(--text);line-height:1.1;letter-spacing:-.01em}
+header h1 em{font-style:italic;color:var(--rose)}
+.header-sub{font-size:.82rem;color:var(--text3);margin-top:.5rem;line-height:1.6}
+.header-deco{width:90px;height:90px;border-radius:50%;background:linear-gradient(135deg,var(--pink2),var(--lilac2));display:flex;align-items:center;justify-content:center;font-size:2.4rem;flex-shrink:0;box-shadow:0 4px 20px rgba(180,80,120,0.15)}
+.header-strip{height:4px;background:linear-gradient(90deg,var(--rose),var(--lilac),var(--pink))}
+
+/* ── PLATFORM TABS ── */
+.platform-nav{background:var(--card);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;box-shadow:var(--shadow2)}
+.platform-nav-inner{max-width:960px;margin:0 auto;padding:0 2rem;display:flex;align-items:stretch;gap:0}
+.tab-btn{padding:.85rem 1.4rem;border:none;background:transparent;cursor:pointer;font-family:'Noto Sans TC',sans-serif;font-size:.85rem;font-weight:500;color:var(--text3);transition:.2s;display:flex;align-items:center;gap:.5rem;border-bottom:2.5px solid transparent;margin-bottom:-1px;white-space:nowrap}
+.tab-btn:hover{color:var(--rose);background:var(--bg2)}
+.tab-btn.active{color:var(--rose);border-bottom-color:var(--rose);background:transparent}
+.tab-pip{width:7px;height:7px;border-radius:50%}
+.tab-pip.ig{background:linear-gradient(135deg,#f9a825,#e8547a)}
+.tab-pip.fb{background:#1877f2}
+.tab-pip.txt{background:var(--lilac)}
+
+/* ── MAIN LAYOUT ── */
+main{max-width:960px;margin:0 auto;padding:2rem 2rem 4rem}
+
+/* ── SECTION LABEL (magazine kicker) ── */
+.section-kicker{font-size:.68rem;letter-spacing:.18em;text-transform:uppercase;color:var(--rose);font-weight:500;margin-bottom:.6rem}
+
+/* ── UPLOAD CARD ── */
+.upload-card{background:var(--card);border-radius:20px;border:1px solid var(--border);box-shadow:var(--shadow);margin-bottom:1.5rem;overflow:hidden}
+.upload-card-head{padding:1.5rem 1.8rem 0;display:flex;align-items:flex-start;justify-content:space-between;gap:1rem}
+.upload-card-head h2{font-family:'DM Serif Display',serif;font-size:1.25rem;color:var(--text)}
+.upload-card-body{padding:1.2rem 1.8rem 1.8rem}
+
+/* drop zones */
+.drop-zone{border:1.5px dashed var(--pink);border-radius:14px;padding:1.8rem 1.5rem;text-align:center;cursor:pointer;transition:.25s;background:linear-gradient(135deg,rgba(249,208,223,.18),rgba(237,224,249,.18))}
+.drop-zone:hover,.drop-zone.dragover{border-color:var(--rose);background:rgba(232,84,122,.06)}
+.drop-zone p{color:var(--text3);font-size:.85rem;line-height:1.7}
+.drop-zone strong{color:var(--rose)}
+.drop-zone .drop-icon{font-size:2rem;margin-bottom:.5rem;display:block}
+
+/* file limit badge */
+.limit-badge{display:inline-flex;align-items:center;gap:.35rem;font-size:.72rem;color:var(--text3);background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:.3rem .75rem;margin-top:.6rem}
+.limit-badge b{color:var(--text2)}
+
+/* mode toggle */
+.mode-toggle{display:flex;gap:4px;background:var(--bg2);border-radius:12px;padding:4px;margin-bottom:1rem;border:1px solid var(--border)}
+.mode-btn{flex:1;padding:.45rem .5rem;border:none;background:transparent;border-radius:9px;cursor:pointer;font-family:'Noto Sans TC',sans-serif;font-size:.8rem;color:var(--text3);transition:.2s;display:flex;align-items:center;justify-content:center;gap:.3rem}
+.mode-btn.active{background:var(--card);color:var(--rose);font-weight:500;box-shadow:0 1px 6px rgba(180,80,120,.13)}
+
+/* textarea */
+textarea{width:100%;min-height:130px;border:1.5px solid var(--border);border-radius:12px;padding:.9rem 1rem;font-family:'Noto Sans TC',sans-serif;font-size:.85rem;color:var(--text);background:var(--bg);resize:vertical;outline:none;transition:.2s;line-height:1.7}
+textarea:focus{border-color:var(--pink)}
+
+/* txt file upload */
+.txtfile-drop{border:1.5px dashed var(--pink);border-radius:14px;padding:1.5rem;text-align:center;cursor:pointer;transition:.25s;background:rgba(249,208,223,.1)}
+.txtfile-drop:hover,.txtfile-drop.dragover{border-color:var(--rose);background:rgba(232,84,122,.06)}
+.txtfile-drop p{color:var(--text3);font-size:.85rem}
+.file-badge-row{display:flex;align-items:center;gap:.5rem;margin-bottom:.6rem}
+.file-badge{display:inline-flex;align-items:center;gap:.5rem;background:var(--pink2);border-radius:8px;padding:.35rem .8rem;font-size:.8rem;color:var(--rose2)}
+.file-badge button{background:none;border:none;cursor:pointer;color:var(--text3);font-size:.85rem;padding:0;line-height:1}
+
+/* image upload */
+.img-drop{border:1.5px dashed var(--pink);border-radius:14px;padding:1.5rem;text-align:center;cursor:pointer;transition:.25s;background:rgba(249,208,223,.1)}
+.img-drop:hover,.img-drop.dragover{border-color:var(--rose);background:rgba(232,84,122,.06)}
+.img-drop p{color:var(--text3);font-size:.85rem;line-height:1.7}
+.img-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:.5rem;margin:.75rem 0}
+.img-thumb{position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;border:1.5px solid var(--border)}
+.img-thumb img{width:100%;height:100%;object-fit:cover}
+.img-thumb .del-btn{position:absolute;top:3px;right:3px;background:rgba(44,24,16,.75);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1}
+.img-thumb .img-status{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.5);color:#fff;font-size:.6rem;padding:2px 4px;text-align:center}
+.ocr-btn{width:100%;padding:.6rem;background:linear-gradient(135deg,var(--pink2),var(--lilac2));border:1.5px solid var(--border);border-radius:10px;color:var(--rose2);font-family:'Noto Sans TC',sans-serif;font-size:.85rem;font-weight:500;cursor:pointer;transition:.2s;margin:.5rem 0}
+.ocr-btn:hover{background:linear-gradient(135deg,#f5bace,#dfc9f5)}
+.ocr-btn:disabled{opacity:.5;cursor:default}
+.ocr-result{background:var(--bg);border-radius:10px;padding:.75rem 1rem;font-size:.8rem;color:var(--text2);line-height:1.7;max-height:150px;overflow-y:auto;border:1px solid var(--border);margin:.5rem 0;white-space:pre-wrap;display:none}
+
+/* name input + analyze */
+.name-row{display:flex;gap:.75rem;align-items:center;margin-top:.9rem}
+.name-row label{font-size:.82rem;color:var(--text3);white-space:nowrap}
+.name-input{flex:1;padding:.55rem .9rem;border:1.5px solid var(--border);border-radius:10px;font-family:'Noto Sans TC',sans-serif;font-size:.85rem;background:var(--bg);outline:none;transition:.2s;color:var(--text)}
+.name-input:focus{border-color:var(--pink)}
+.btn-analyze{display:block;width:100%;margin-top:1rem;padding:.9rem;background:linear-gradient(135deg,var(--rose),var(--mauve));color:#fff;border:none;border-radius:12px;font-family:'DM Serif Display',serif;font-size:1.05rem;cursor:pointer;letter-spacing:.04em;transition:.2s;box-shadow:0 4px 16px rgba(155,107,189,.3)}
+.btn-analyze:hover{transform:translateY(-1px);box-shadow:0 6px 22px rgba(155,107,189,.4)}
+.btn-analyze:active{transform:translateY(0)}
+
+/* ── HOW-TO CARD ── */
+.howto-card{background:var(--card);border-radius:20px;border:1px solid var(--border);box-shadow:var(--shadow2);margin-bottom:1.5rem;overflow:hidden}
+.howto-head{padding:1.2rem 1.8rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.howto-head h3{font-family:'DM Serif Display',serif;font-size:1rem;color:var(--text)}
+.howto-body{padding:1.2rem 1.8rem}
+.step{display:flex;gap:.8rem;margin-bottom:.7rem;align-items:flex-start}
+.step-num{background:linear-gradient(135deg,var(--rose),var(--mauve));color:#fff;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;flex-shrink:0;margin-top:.15rem}
+.step p{font-size:.83rem;color:var(--text2);line-height:1.65}
+.step code{background:var(--pink2);padding:.1rem .35rem;border-radius:4px;font-size:.77rem;color:var(--rose2)}
+
+/* ── LOADING OVERLAY ── */
+#loadingOverlay{display:none;position:fixed;inset:0;background:rgba(42,21,32,.55);z-index:999;align-items:center;justify-content:center;flex-direction:column;gap:1rem;backdrop-filter:blur(4px)}
+#loadingOverlay.show{display:flex}
+.spinner{width:42px;height:42px;border:3px solid rgba(249,208,223,.3);border-top-color:var(--pink);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#loadingOverlay p{color:#fde;font-size:.9rem}
+
+/* ── RESULTS ── */
+#results{display:none}
+
+/* report masthead */
+.report-masthead{background:linear-gradient(135deg,#f9d0df,#ede0f9,#fde8f0);border-radius:20px;padding:2.2rem 2rem;margin-bottom:1.5rem;position:relative;overflow:hidden;border:1px solid rgba(232,84,122,.12)}
+.report-masthead::before{content:'ANALYSIS REPORT';position:absolute;top:1rem;right:1.5rem;font-size:.62rem;letter-spacing:.2em;color:rgba(232,84,122,.3);font-weight:700}
+.masthead-kicker{font-size:.7rem;letter-spacing:.16em;text-transform:uppercase;color:var(--rose);font-weight:500;margin-bottom:.5rem}
+.masthead-title{font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:700;color:var(--text);line-height:1.2}
+.masthead-date{font-size:.78rem;color:var(--text3);margin-top:.4rem}
+.vs-row{display:flex;gap:.75rem;align-items:center;margin-top:1.2rem}
+.user-pill{background:rgba(255,255,255,.7);border:1px solid rgba(232,84,122,.2);padding:.4rem 1.1rem;border-radius:20px;font-size:.9rem;font-weight:500;color:var(--rose2);backdrop-filter:blur(4px)}
+.vs-dot{font-size:.75rem;color:var(--text3)}
+
+/* stats row */
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.5rem}
+.stat-card{background:var(--card);border-radius:16px;padding:1.3rem 1rem;text-align:center;border:1px solid var(--border);box-shadow:var(--shadow2)}
+.stat-num{font-family:'Playfair Display',serif;font-size:2rem;font-weight:700;color:var(--rose);line-height:1}
+.stat-label{font-size:.72rem;color:var(--text3);margin-top:.35rem;letter-spacing:.04em}
+
+/* section cards */
+.sec{background:var(--card);border-radius:20px;border:1px solid var(--border);box-shadow:var(--shadow2);margin-bottom:1.5rem;overflow:hidden}
+.sec-head{padding:1.2rem 1.8rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:.6rem}
+.sec-head-icon{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,var(--pink2),var(--lilac2));display:flex;align-items:center;justify-content:center;font-size:.9rem;flex-shrink:0}
+.sec-head h2{font-family:'DM Serif Display',serif;font-size:1rem;color:var(--text)}
+.sec-body{padding:1.4rem 1.8rem}
+
+/* charts */
+.chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}
+.chart-label{font-size:.75rem;color:var(--text3);margin-bottom:.5rem;letter-spacing:.04em;text-transform:uppercase;font-size:.68rem}
+.chart-wrap{position:relative}
+
+/* heatmap */
+.heatmap-grid{display:grid;grid-template-columns:repeat(53,1fr);gap:2px;margin-top:.4rem}
+.heatmap-cell{aspect-ratio:1;border-radius:2px}
+.heatmap-labels{display:flex;justify-content:space-between;font-size:.65rem;color:var(--text3);margin-bottom:.3rem}
+.user-section{margin-bottom:1.5rem}
+.user-label{display:flex;align-items:center;gap:.5rem;font-size:.82rem;font-weight:500;color:var(--text2);margin-bottom:.4rem}
+.user-dot{width:9px;height:9px;border-radius:50%}
+
+/* wordcloud */
+.wc-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}
+.wc-name{font-size:.75rem;color:var(--text3);margin-bottom:.7rem;font-weight:500;text-transform:uppercase;letter-spacing:.06em}
+.word-list{display:flex;flex-wrap:wrap;gap:.4rem}
+.word-tag{padding:.22rem .55rem;border-radius:20px;font-size:.75rem;cursor:default;transition:.15s}
+.word-tag:hover{transform:scale(1.05)}
+
+/* affection */
+.affection-wrap{text-align:center;padding:.5rem 0}
+.meter-score{font-family:'Playfair Display',serif;font-size:4rem;font-weight:700;color:var(--rose);line-height:1}
+.meter-label{font-size:.8rem;color:var(--text3);margin-top:.25rem}
+.meter-track{width:100%;height:14px;background:rgba(232,84,122,.1);border-radius:7px;overflow:hidden;margin:1rem 0}
+.meter-fill{height:100%;border-radius:7px;background:linear-gradient(90deg,var(--pink),var(--rose),var(--mauve));transition:width 1s ease}
+.signals-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;margin-top:1.2rem}
+.signal-item{background:var(--bg2);border-radius:12px;padding:.8rem;text-align:center}
+.signal-val{font-size:1.25rem;font-weight:700;color:var(--rose2)}
+.signal-lbl{font-size:.7rem;color:var(--text3);margin-top:.2rem}
+.affection-summary{background:linear-gradient(135deg,rgba(249,208,223,.25),rgba(237,224,249,.25));border-radius:12px;padding:1rem 1.2rem;margin-top:1.2rem;border-left:3px solid var(--pink)}
+.affection-grade{display:inline-block;background:linear-gradient(135deg,var(--rose),var(--mauve));color:#fff;font-family:'DM Serif Display',serif;font-size:.8rem;padding:.25rem .8rem;border-radius:20px;margin-bottom:.5rem}
+.affection-summary p{font-size:.83rem;color:var(--text2);line-height:1.8}
+
+/* topics */
+.topic-grid{display:grid;grid-template-columns:1fr 1fr;gap:.85rem;margin-bottom:1.5rem}
+.topic-item{background:var(--bg2);border-radius:12px;padding:.9rem 1rem;display:flex;align-items:center;gap:.75rem;border:1px solid var(--border)}
+.topic-emoji{font-size:1.3rem;flex-shrink:0}
+.topic-name{font-size:.83rem;font-weight:500;color:var(--text)}
+.topic-bar-track{height:4px;background:rgba(232,84,122,.12);border-radius:2px;margin-top:.3rem}
+.topic-bar-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--pink),var(--rose))}
+.topic-pct{font-size:.7rem;color:var(--text3);margin-top:.2rem}
+.suggestions{margin-top:1.5rem}
+.sug-label{font-size:.75rem;font-weight:500;color:var(--rose);margin-bottom:.75rem;display:flex;align-items:center;gap:.4rem;text-transform:uppercase;letter-spacing:.06em}
+.sug-list{display:flex;flex-direction:column;gap:.5rem}
+.sug-item{background:var(--bg2);border-radius:12px;padding:.8rem 1rem;display:flex;gap:.75rem;align-items:flex-start;border-left:2.5px solid transparent;transition:.2s;border:1px solid var(--border)}
+.sug-item:hover{border-left-color:var(--pink);background:rgba(249,208,223,.15)}
+.sug-icon{font-size:.95rem;flex-shrink:0;margin-top:.05rem}
+.sug-text{font-size:.81rem;color:var(--text2);line-height:1.6}
+.sug-tag{display:inline-block;font-size:.68rem;background:var(--pink2);color:var(--rose2);padding:.1rem .4rem;border-radius:4px;margin-right:.3rem}
+
+/* Big Five */
+.bigfive-compare{display:grid;grid-template-columns:1fr 90px 1fr;gap:.5rem;align-items:center;margin-bottom:.75rem}
+.dim-label-center{font-size:.78rem;color:var(--text3);text-align:center;font-weight:500}
+.bar-left{display:flex;justify-content:flex-end;align-items:center;gap:.5rem}
+.bar-right{display:flex;justify-content:flex-start;align-items:center;gap:.5rem}
+.bar-fill{height:9px;border-radius:5px}
+.bar-left .bar-fill{background:linear-gradient(90deg,var(--pink),var(--rose))}
+.bar-right .bar-fill{background:linear-gradient(90deg,var(--lilac),var(--mauve))}
+.bar-score{font-size:.73rem;font-weight:600;color:var(--text2);white-space:nowrap}
+
+/* MBTI */
+.mbti-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem}
+.mbti-card{background:var(--bg2);border-radius:16px;padding:1.3rem;border:1px solid var(--border)}
+.mbti-type{font-family:'Playfair Display',serif;font-size:2.4rem;font-weight:700;line-height:1;margin-bottom:.2rem}
+.mbti-user{font-size:.76rem;margin-bottom:.9rem}
+.mbti-dim{display:flex;justify-content:space-between;align-items:center;font-size:.76rem;color:var(--text2);padding:.32rem 0;border-bottom:1px solid var(--border)}
+.mbti-dim:last-child{border-bottom:none}
+.dim-value{font-weight:600;color:var(--rose2)}
+.mbti-desc{font-size:.76rem;color:var(--text3);line-height:1.5;margin-bottom:.8rem}
+
+/* responsive */
+@media(max-width:640px){
+  .header-inner{grid-template-columns:1fr;gap:1rem}.header-deco{display:none}
+  header h1{font-size:1.9rem}
+  .stats-row{grid-template-columns:1fr 1fr}
+  .chart-grid{grid-template-columns:1fr}
+  .wc-grid{grid-template-columns:1fr}
+  .mbti-grid{grid-template-columns:1fr}
+  .topic-grid{grid-template-columns:1fr}
+  main{padding:1.2rem 1rem 3rem}
+  .upload-card-body{padding:.9rem 1.2rem 1.2rem}
+  .sec-body{padding:1rem 1.2rem}
+  .upload-card-head{padding:1.2rem 1.2rem 0}
+  .howto-head,.howto-body{padding-left:1.2rem;padding-right:1.2rem}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-strip"></div>
+  <div class="header-inner">
+    <div>
+      <div class="header-kicker">Chat Analysis Tool</div>
+      <h1>聊天記錄分析工具</h1>
+      <div class="header-sub">支援 Instagram · Messenger · 純文字 · 文字檔 · 截圖上傳</div>
+    </div>
+    <div class="header-deco">💌</div>
+  </div>
+</header>
+
+<nav class="platform-nav">
+  <div class="platform-nav-inner">
+    <button class="tab-btn active" onclick="switchTab('ig',this)"><span class="tab-pip ig"></span>Instagram</button>
+    <button class="tab-btn" onclick="switchTab('fb',this)"><span class="tab-pip fb"></span>Messenger</button>
+    <button class="tab-btn" onclick="switchTab('txt',this)"><span class="tab-pip txt"></span>純文字 / 截圖</button>
+  </div>
+</nav>
+
+<main>
+
+  <div class="upload-card">
+    <div class="upload-card-head">
+      <div>
+        <div class="section-kicker">Step 01 — 上傳資料</div>
+        <h2 id="uploadTitle">上傳 Instagram JSON 檔案</h2>
+      </div>
+    </div>
+    <div class="upload-card-body">
+
+      <!-- JSON drop zone (ig / fb) -->
+      <div id="jsonZoneWrap">
+        <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+          <span class="drop-icon">📂</span>
+          <p>點擊選擇檔案，或拖曳到這裡</p>
+          <p><strong id="fileHint">message_1.json</strong></p>
+        </div>
+        <div style="text-align:center"><span class="limit-badge">📎 僅接受 <b>.json</b> 格式 &nbsp;·&nbsp; 大小上限 <b>50 MB</b></span></div>
+      </div>
+
+      <!-- txt mode toggle -->
+      <div id="txtModeToggle" style="display:none">
+        <div class="mode-toggle">
+          <button class="mode-btn active" onclick="switchInputMode('text',this)">✏️ 貼上文字</button>
+          <button class="mode-btn" onclick="switchInputMode('txtfile',this)">📄 上傳 .txt</button>
+          <button class="mode-btn" onclick="switchInputMode('image',this)">🖼️ 上傳截圖</button>
+        </div>
+      </div>
+
+      <!-- text panel -->
+      <div id="textPanel">
+        <textarea id="textInput" placeholder="直接貼上聊天記錄文字&#10;每行格式：名稱: 訊息內容&#10;&#10;例如：&#10;小明: 你好嗎&#10;小美: 還不錯！你呢"></textarea>
+        <div style="text-align:center"><span class="limit-badge">ℹ️ 每行格式 <b>名稱: 訊息內容</b>，名稱與冒號之間不加空格亦可</span></div>
+      </div>
+
+      <!-- txt file panel -->
+      <div id="txtFilePanel" style="display:none">
+        <div id="txtBadgeWrap"></div>
+        <div class="txtfile-drop" id="txtDropZone" onclick="document.getElementById('txtFileInput').click()">
+          <p style="font-size:1.3rem;margin-bottom:.4rem">📄</p>
+          <p>點擊或拖曳 <strong style="color:var(--rose)">.txt 文字檔</strong> 到這裡</p>
+          <p style="font-size:.78rem;margin-top:.25rem">每行格式：名稱: 訊息內容</p>
+        </div>
+        <div style="text-align:center"><span class="limit-badge">📎 僅接受 <b>.txt</b> &nbsp;·&nbsp; 大小上限 <b>2 MB</b> &nbsp;·&nbsp; 請使用 <b>UTF-8</b> 編碼</span></div>
+      </div>
+
+      <!-- image panel -->
+      <div id="imagePanel" style="display:none">
+        <div class="img-drop" id="imgDropZone" onclick="document.getElementById('imgFileInput').click()">
+          <p style="font-size:1.5rem;margin-bottom:.4rem">🖼️</p>
+          <p>點擊或拖曳截圖到這裡（支援多張）</p>
+          <p style="font-size:.78rem;margin-top:.25rem"><strong style="color:var(--rose)">PNG / JPG / WEBP</strong></p>
+        </div>
+        <div style="text-align:center"><span class="limit-badge">🖼️ 每張上限 <b>5 MB</b> &nbsp;·&nbsp; 最多 <b>10 張</b></span></div>
+        <div class="img-grid" id="imgPreviewGrid"></div>
+        <button class="ocr-btn" id="ocrBtn" onclick="runOCR()" style="display:none">✨ AI 識別截圖中的聊天內容</button>
+        <div class="ocr-result" id="ocrResultBox"></div>
+      </div>
+
+      <input type="file" id="fileInput" accept=".json" style="display:none">
+      <input type="file" id="imgFileInput" accept="image/*" multiple style="display:none">
+      <input type="file" id="txtFileInput" accept=".txt,text/plain" style="display:none">
+
+      <div class="name-row">
+        <label>你的名稱：</label>
+        <input type="text" class="name-input" id="myName" placeholder="輸入你在對話中顯示的名稱">
+      </div>
+      <button class="btn-analyze" onclick="analyze()">開始分析 →</button>
+    </div>
+  </div>
+
+  <div class="howto-card" id="howtoCard">
+    <div class="howto-head">
+      <div>
+        <div class="section-kicker" style="font-size:.65rem">Guide</div>
+        <h3 id="instrTitle">如何匯出 Instagram 聊天記錄？</h3>
+      </div>
+    </div>
+    <div class="howto-body" id="instrContent"></div>
+  </div>
+
+  <!-- RESULTS -->
+  <div id="results">
+
+    <div class="report-masthead">
+      <div class="masthead-kicker">Chat Analysis Report</div>
+      <div class="masthead-title">人格分析報告</div>
+      <div class="masthead-date" id="reportDate"></div>
+      <div class="vs-row">
+        <div class="user-pill" id="user1Badge">用戶A</div>
+        <div class="vs-dot">VS</div>
+        <div class="user-pill" id="user2Badge">用戶B</div>
+      </div>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-num" id="statTotal">0</div>
+        <div class="stat-label">總訊息數</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" id="statAvgLen">0</div>
+        <div class="stat-label">平均字數</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" id="statDays">—</div>
+        <div class="stat-label">資料涵蓋時長</div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-head"><div class="sec-head-icon">📊</div><h2>訊息行為分析</h2></div>
+      <div class="sec-body">
+        <div class="chart-grid">
+          <div>
+            <div class="chart-label">最活躍時段（24小時）</div>
+            <div class="chart-wrap" style="height:180px"><canvas id="hourChart"></canvas></div>
+          </div>
+          <div>
+            <div class="chart-label">每週活躍天</div>
+            <div class="chart-wrap" style="height:180px"><canvas id="weekChart"></canvas></div>
+          </div>
+        </div>
+        <div style="margin-top:1.5rem">
+          <div class="chart-label">兩人訊息量對比</div>
+          <div class="chart-wrap" style="height:160px"><canvas id="msgRatioChart"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-head"><div class="sec-head-icon">🗓️</div><h2>聊天頻率熱力圖</h2></div>
+      <div class="sec-body" id="heatmapSection"></div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-head"><div class="sec-head-icon">☁️</div><h2>高頻詞對比</h2></div>
+      <div class="sec-body"><div class="wc-grid" id="wordcloudSection"></div></div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-head"><div class="sec-head-icon">💘</div><h2>對你的好感度分析</h2></div>
+      <div class="sec-body" id="affectionSection"></div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-head"><div class="sec-head-icon">💡</div><h2>話題偏好 &amp; 聊天建議</h2></div>
+      <div class="sec-body" id="topicSection"></div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-head"><div class="sec-head-icon">🧠</div><h2>大五人格分析（Big Five）</h2></div>
+      <div class="sec-body" id="bigfiveSection"></div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-head"><div class="sec-head-icon">🔮</div><h2>MBTI 推斷</h2></div>
+      <div class="sec-body"><div class="mbti-grid" id="mbtiSection"></div></div>
+    </div>
+
+  </div><!-- /results -->
+</main>
+
+<div id="loadingOverlay">
+  <div class="spinner"></div>
+  <p>正在分析聊天記錄…</p>
+</div>
+
+<script>
+let currentTab = 'ig';
+let parsedMessages = [];
+let chartInstances = {};
+
+// ── INIT INSTRUCTIONS ──
+(function(){
+  switchTab('ig', document.querySelector('.tab-btn'));
+})();
+
+function switchTab(tab, btn) {
+  currentTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  const titles = { ig:'上傳 Instagram JSON 檔案', fb:'上傳 Messenger JSON 檔案', txt:'純文字 / 截圖上傳' };
+  const hints  = { ig:'message_1.json', fb:'message_1.json', txt:'' };
+  document.getElementById('uploadTitle').textContent = titles[tab];
+  document.getElementById('fileHint').textContent = hints[tab];
+  const instrTitles = { ig:'如何匯出 Instagram 聊天記錄？', fb:'如何匯出 Messenger 聊天記錄？', txt:'使用方式說明' };
+  document.getElementById('instrTitle').textContent = instrTitles[tab];
+  const stepsIg = `
+    <div class="step"><div class="step-num">1</div><p>Instagram App → 右上角選單 → <code>設定和隱私</code></p></div>
+    <div class="step"><div class="step-num">2</div><p><code>帳號中心</code> → <code>你的資訊和權限</code> → <code>下載你的資訊</code></p></div>
+    <div class="step"><div class="step-num">3</div><p>選 <code>部分資訊</code> → 勾選 <code>訊息</code> → 格式選 <code>JSON</code></p></div>
+    <div class="step"><div class="step-num">4</div><p>解壓縮，找到 <code>messages/inbox/[對方名稱]/message_1.json</code> 上傳</p></div>`;
+  const stepsFb = `
+    <div class="step"><div class="step-num">1</div><p>Facebook → 右上角 → <code>設定和隱私</code> → <code>設定</code></p></div>
+    <div class="step"><div class="step-num">2</div><p><code>你的 Facebook 資訊</code> → <code>下載你的資訊</code></p></div>
+    <div class="step"><div class="step-num">3</div><p>取消全選，只勾選 <code>訊息</code> → 格式選 <code>JSON</code> → 品質選低</p></div>
+    <div class="step"><div class="step-num">4</div><p>解壓縮，找到 <code>messages/inbox/[對方名稱]/message_1.json</code> 上傳</p></div>`;
+  const stepsTxt = `
+    <div class="step"><div class="step-num">1</div><p>「貼上文字」：每行一則訊息，格式 <code>名稱: 內容</code></p></div>
+    <div class="step"><div class="step-num">2</div><p>「上傳 .txt」：選擇純文字檔（UTF-8，上限 2 MB），格式同上</p></div>
+    <div class="step"><div class="step-num">3</div><p>「上傳截圖」：截取 IG/Messenger 聊天畫面，最多 10 張，每張上限 5 MB</p></div>
+    <div class="step"><div class="step-num">4</div><p>點擊「AI 識別截圖」後，AI 辨識完自動填入文字，確認後按開始分析</p></div>`;
+  document.getElementById('instrContent').innerHTML = {ig:stepsIg,fb:stepsFb,txt:stepsTxt}[tab];
+  const isTxt = tab === 'txt';
+  document.getElementById('jsonZoneWrap').style.display = isTxt ? 'none' : 'block';
+  document.getElementById('txtModeToggle').style.display = isTxt ? 'block' : 'none';
+  if (!isTxt) {
+    document.getElementById('textPanel').style.display = 'block';
+    document.getElementById('txtFilePanel').style.display = 'none';
+    document.getElementById('imagePanel').style.display = 'none';
+  }
+}
+
+// ── JSON FILE ──
+document.getElementById('fileInput').addEventListener('change', function(e) {
+  const file = e.target.files[0]; if (!file) return;
+  if (file.size > 50*1024*1024) { alert('❌ 檔案超過 50 MB 上限，請重新選擇。'); e.target.value=''; return; }
+  const r = new FileReader();
+  r.onload = ev => { window._jsonData = ev.target.result; document.getElementById('dropZone').querySelector('p').textContent = '✓ 已選擇：' + file.name; };
+  r.readAsText(file);
+});
+const dz = document.getElementById('dropZone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.classList.remove('dragover');
+  const f = e.dataTransfer.files[0]; if (!f) return;
+  if (f.size > 50*1024*1024) { alert('❌ 檔案超過 50 MB 上限。'); return; }
+  const r = new FileReader(); r.onload = ev => { window._jsonData = ev.target.result; dz.querySelector('p').textContent = '✓ 已選擇：' + f.name; }; r.readAsText(f);
+});
+
+// ── MODE TOGGLE ──
+function switchInputMode(mode, btn) {
+  document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('textPanel').style.display    = mode==='text'    ? 'block' : 'none';
+  document.getElementById('txtFilePanel').style.display = mode==='txtfile' ? 'block' : 'none';
+  document.getElementById('imagePanel').style.display   = mode==='image'   ? 'block' : 'none';
+}
+
+// ── TXT FILE ──
+document.getElementById('txtFileInput').addEventListener('change', function(e) {
+  const file = e.target.files[0]; if (!file) return;
+  if (file.size > 2*1024*1024) { alert('❌ 文字檔超過 2 MB 上限，請重新選擇。'); e.target.value=''; return; }
+  const r = new FileReader();
+  r.onload = ev => { document.getElementById('textInput').value = ev.target.result; renderTxtBadge(file.name); };
+  r.readAsText(file, 'UTF-8');
+  e.target.value = '';
+});
+const txtDz = document.getElementById('txtDropZone');
+txtDz.addEventListener('dragover', e => { e.preventDefault(); txtDz.classList.add('dragover'); });
+txtDz.addEventListener('dragleave', () => txtDz.classList.remove('dragover'));
+txtDz.addEventListener('drop', e => {
+  e.preventDefault(); txtDz.classList.remove('dragover');
+  const f = e.dataTransfer.files[0];
+  if (!f || !f.name.endsWith('.txt')) { alert('請上傳 .txt 純文字檔！'); return; }
+  if (f.size > 2*1024*1024) { alert('❌ 文字檔超過 2 MB 上限。'); return; }
+  const r = new FileReader(); r.onload = ev => { document.getElementById('textInput').value = ev.target.result; renderTxtBadge(f.name); }; r.readAsText(f,'UTF-8');
+});
+function renderTxtBadge(name) {
+  document.getElementById('txtBadgeWrap').innerHTML =
+    `<div class="file-badge-row"><span class="file-badge">📄 ${name}<button onclick="clearTxt()">✕</button></span></div>`;
+  txtDz.querySelector('p:first-of-type').textContent = '已讀取，可重新拖曳覆蓋';
+}
+function clearTxt() {
+  document.getElementById('textInput').value = '';
+  document.getElementById('txtBadgeWrap').innerHTML = '';
+  txtDz.querySelector('p:first-of-type').textContent = '點擊或拖曳 .txt 文字檔 到這裡';
+}
+
+// ── IMAGE FILES ──
+let uploadedImages = [];
+document.getElementById('imgFileInput').addEventListener('change', function(e) { addImages(Array.from(e.target.files)); e.target.value=''; });
+const imgDz = document.getElementById('imgDropZone');
+imgDz.addEventListener('dragover', e => { e.preventDefault(); imgDz.classList.add('dragover'); });
+imgDz.addEventListener('dragleave', () => imgDz.classList.remove('dragover'));
+imgDz.addEventListener('drop', e => { e.preventDefault(); imgDz.classList.remove('dragover'); addImages(Array.from(e.dataTransfer.files).filter(f=>f.type.startsWith('image/'))); });
+
+function addImages(files) {
+  let skipped = 0;
+  files.forEach(file => {
+    if (uploadedImages.length >= 10) { skipped++; return; }
+    if (file.size > 5*1024*1024) { alert(`❌「${file.name}」超過 5 MB，已略過。`); return; }
+    const r = new FileReader();
+    r.onload = ev => {
+      uploadedImages.push({ name:file.name, base64:ev.target.result.split(',')[1], mediaType:file.type||'image/jpeg', dataUrl:ev.target.result });
+      renderImgPreviews();
+    };
+    r.readAsDataURL(file);
+  });
+  if (skipped) alert(`⚠️ 最多上傳 10 張，已略過 ${skipped} 張。`);
+}
+
+function renderImgPreviews() {
+  document.getElementById('imgPreviewGrid').innerHTML = uploadedImages.map((img,i) => `
+    <div class="img-thumb">
+      <img src="${img.dataUrl}" alt="${img.name}">
+      <button class="del-btn" onclick="removeImg(${i})">✕</button>
+      <div class="img-status" id="imgStatus_${i}">待識別</div>
+    </div>`).join('');
+  document.getElementById('ocrBtn').style.display = uploadedImages.length ? 'block' : 'none';
+}
+
+function removeImg(i) {
+  uploadedImages.splice(i,1); renderImgPreviews();
+  if (!uploadedImages.length) document.getElementById('ocrResultBox').style.display='none';
+}
+
+async function runOCR() {
+  if (!uploadedImages.length) return;
+  const btn = document.getElementById('ocrBtn');
+  btn.disabled = true; btn.textContent = '⏳ AI 識別中…';
+  const rb = document.getElementById('ocrResultBox');
+  rb.style.display = 'block'; rb.textContent = '正在識別，請稍候…';
+  let allText = '';
+  for (let i=0; i<uploadedImages.length; i++) {
+    const img = uploadedImages[i];
+    document.getElementById('imgStatus_'+i).textContent = '識別中…';
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:1000, messages:[{ role:'user', content:[
+          { type:'image', source:{ type:'base64', media_type:img.mediaType, data:img.base64 }},
+          { type:'text', text:'這是一張聊天截圖。請完整擷取圖片中所有的聊天訊息，格式輸出為每行一則：「名稱: 訊息內容」。只輸出訊息內容，不要任何解釋或其他文字。若有時間戳，忽略它。名稱請保持原本截圖中的顯示名稱。' }
+        ]}]})
+      });
+      const data = await res.json();
+      const text = (data.content||[]).map(c=>c.text||'').join('');
+      allText += (allText?'\n':'') + text;
+      document.getElementById('imgStatus_'+i).textContent = '✓ 完成';
+      rb.textContent = allText;
+    } catch(err) {
+      document.getElementById('imgStatus_'+i).textContent = '✗ 失敗';
+    }
+  }
+  document.getElementById('textInput').value = allText;
+  btn.disabled = false; btn.textContent = '✅ 識別完成，可繼續編輯或直接分析';
+  document.querySelectorAll('.mode-btn')[0].click();
+}
+
+// ── PARSE ──
+function parseIG(json) {
+  const data = JSON.parse(json);
+  const msgs = [];
+  (data.messages||[]).forEach(m => {
+    if (m.content) {
+      msgs.push({ sender: decodeURIComponent(escape(m.sender_name||'未知')), content: decodeURIComponent(escape(m.content)), timestamp: m.timestamp_ms });
+    }
+  });
+  return msgs.reverse();
+}
+function parseFB(json) { return parseIG(json); }
+function parsePlainText(text) {
+  return text.split('\n').filter(l=>l.trim()).map(line => {
+    const colon = line.indexOf(':'); if (colon<0) return null;
+    const sender = line.substring(0,colon).trim();
+    const content = line.substring(colon+1).trim();
+    if (!sender||!content) return null;
+    return { sender, content, timestamp: Date.now() };
+  }).filter(Boolean);
+}
+
+// ── ANALYZE ──
+function analyze() {
+  const text = document.getElementById('textInput').value.trim();
+  let msgs = [];
+  try {
+    if (window._jsonData && currentTab !== 'txt') {
+      msgs = currentTab==='fb' ? parseFB(window._jsonData) : parseIG(window._jsonData);
+    } else if (text) {
+      msgs = parsePlainText(text);
+    } else {
+      alert('請先上傳 JSON 檔案、貼上或上傳聊天文字，或上傳截圖並完成 AI 識別！'); return;
+    }
+    if (!msgs.length) { alert('無法解析訊息，請確認格式正確（每行：名稱: 內容）。'); return; }
+  } catch(e) { alert('解析失敗：' + e.message); return; }
+  document.getElementById('loadingOverlay').classList.add('show');
+  setTimeout(() => { buildReport(msgs); document.getElementById('loadingOverlay').classList.remove('show'); }, 600);
+}
+
+// ── BUILD REPORT ──
+function buildReport(msgs) {
+  parsedMessages = msgs;
+  const senders = [...new Set(msgs.map(m=>m.sender))];
+  const myName  = document.getElementById('myName').value.trim();
+  const me    = myName || senders[0];
+  const other = senders.find(s=>s!==me) || senders[1] || 'other';
+
+  document.getElementById('user1Badge').textContent = me;
+  document.getElementById('user2Badge').textContent = other;
+  document.getElementById('reportDate').textContent = '分析日期：' + new Date().toLocaleDateString('zh-TW');
+
+  const myMsgs    = msgs.filter(m=>m.sender===me);
+  const otherMsgs = msgs.filter(m=>m.sender===other);
+
+  // Stats
+  document.getElementById('statTotal').textContent = msgs.length;
+  document.getElementById('statAvgLen').textContent = Math.round(msgs.reduce((s,m)=>s+m.content.length,0)/msgs.length);
+  if (msgs[0].timestamp) {
+    const ts = msgs.map(m=>m.timestamp);
+    const days = Math.max(1,Math.round((Math.max(...ts)-Math.min(...ts))/86400000));
+    document.getElementById('statDays').textContent = days < 30 ? '不足1個月' : Math.round(days/30) + '個月';
+  } else { document.getElementById('statDays').textContent = '—'; }
+
+  // Destroy old charts
+  Object.values(chartInstances).forEach(c=>c.destroy()); chartInstances = {};
+
+  const roseA = 'rgba(232,84,122,0.65)';
+  const mauveA = 'rgba(155,107,189,0.65)';
+
+  // Hour chart
+  const hourData = new Array(24).fill(0);
+  msgs.forEach(m=>{ if(m.timestamp){ hourData[new Date(m.timestamp).getHours()]++; } });
+  chartInstances.hour = new Chart(document.getElementById('hourChart'), {
+    type:'bar', data:{ labels:Array.from({length:24},(_,i)=>i+':00'), datasets:[{ data:hourData, backgroundColor:roseA, borderRadius:3 }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ x:{ticks:{font:{size:9},maxRotation:0,autoSkip:true}}, y:{ticks:{font:{size:9}}} } }
+  });
+
+  // Week chart
+  const weekData = new Array(7).fill(0);
+  msgs.forEach(m=>{ if(m.timestamp){ weekData[new Date(m.timestamp).getDay()]++; } });
+  chartInstances.week = new Chart(document.getElementById('weekChart'), {
+    type:'bar', data:{ labels:['日','一','二','三','四','五','六'], datasets:[{ data:weekData, backgroundColor:mauveA, borderRadius:3 }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ x:{ticks:{font:{size:11}}}, y:{ticks:{font:{size:9}}} } }
+  });
+
+  // Ratio chart
+  chartInstances.ratio = new Chart(document.getElementById('msgRatioChart'), {
+    type:'bar', data:{ labels:[me,other], datasets:[{ data:[myMsgs.length,otherMsgs.length], backgroundColor:[roseA,mauveA], borderRadius:5 }] },
+    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ x:{ticks:{font:{size:10}}}, y:{ticks:{font:{size:12}}} } }
+  });
+
+  buildHeatmap(msgs, me, other);
+  buildWordCloud(msgs, me, other);
+  buildAffection(msgs, myMsgs, otherMsgs, me, other);
+  buildTopics(msgs, myMsgs, otherMsgs, me, other);
+  buildBigFive(myMsgs, otherMsgs, me, other);
+  buildMBTI(myMsgs, otherMsgs, me, other);
+
+  document.getElementById('results').style.display = 'block';
+  document.getElementById('results').scrollIntoView({ behavior:'smooth' });
+}
+
+// ── HEATMAP ──
+function buildHeatmap(msgs, me, other) {
+  const el = document.getElementById('heatmapSection'); el.innerHTML = '';
+  [[me,'var(--rose)'],[other,'var(--mauve)']].forEach(([user,color]) => {
+    const userMsgs = msgs.filter(m=>m.sender===user);
+    const dayCounts = {};
+    userMsgs.forEach(m=>{ if(m.timestamp){ const d=new Date(m.timestamp).toISOString().split('T')[0]; dayCounts[d]=(dayCounts[d]||0)+1; } });
+    const max = Math.max(1,...Object.values(dayCounts));
+    const sec = document.createElement('div'); sec.className='user-section';
+    const lbl = document.createElement('div'); lbl.className='user-label';
+    lbl.innerHTML=`<span class="user-dot" style="background:${color}"></span>${user}`;
+    sec.appendChild(lbl);
+    const labDiv = document.createElement('div'); labDiv.className='heatmap-labels';
+    ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'].forEach(m=>{ const s=document.createElement('span');s.textContent=m;labDiv.appendChild(s); });
+    sec.appendChild(labDiv);
+    const grid = document.createElement('div'); grid.className='heatmap-grid';
+    const year = new Date().getFullYear();
+    for (let w=0;w<53;w++) for (let d=0;d<7;d++) {
+      const date = new Date(year,0,1+w*7+d);
+      const key = date.toISOString().split('T')[0];
+      const count = dayCounts[key]||0;
+      const cell = document.createElement('div'); cell.className='heatmap-cell';
+      const isRose = color==='var(--rose)';
+      const alpha = count>0 ? 0.18+(count/max)*0.78 : 0.05;
+      cell.style.background = count>0 ? (isRose?`rgba(232,84,122,${alpha})`:`rgba(155,107,189,${alpha})`) : 'rgba(180,80,120,0.05)';
+      cell.title = key+': '+count+' 則';
+      grid.appendChild(cell);
+    }
+    sec.appendChild(grid);
+    el.appendChild(sec);
+  });
+}
+
+// ── WORDCLOUD ──
+function getTopWords(msgs,n=25) {
+  const stop = new Set(['的','了','是','在','我','你','他','她','它','們','這','那','都','也','很','就','不','人','上','來','說','嗎','啊','喔','哦','哈','嗯','好','有','沒','什','麼','么','吧','呢','啦','耶','唉','噢','哇','欸','嘿','囉','唷','呀','嗚','咦','喂','啥','and','the','is','to','a','of','in','it','he','she','we','you','they','be','have','do','for','on','with','as','at','by','from','or','an','but','not','this','was','are','were','i','me','my','your','his','her','our','their']);
+  const freq = {};
+  msgs.forEach(m=>{ m.content.replace(/[^\u4e00-\u9fffa-zA-Z]/g,' ').split(/\s+/).filter(w=>w.length>1&&!stop.has(w.toLowerCase())).forEach(w=>{ freq[w]=(freq[w]||0)+1; }); });
+  return Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,n);
+}
+function buildWordCloud(msgs, me, other) {
+  const el = document.getElementById('wordcloudSection'); el.innerHTML='';
+  [[me,msgs.filter(m=>m.sender===me),'var(--rose)','var(--pink2)','var(--rose2)'],[other,msgs.filter(m=>m.sender===other),'var(--mauve)','var(--lilac2)','var(--mauve)']].forEach(([user,uMsgs,textColor,bgColor,borderColor])=>{
+    const words = getTopWords(uMsgs,22);
+    const maxF = words[0]?words[0][1]:1;
+    const div = document.createElement('div');
+    div.innerHTML = `<div class="wc-name">${user} 的高頻詞</div>`;
+    const list = document.createElement('div'); list.className='word-list';
+    words.forEach(([word,freq])=>{
+      const size = 11+Math.round((freq/maxF)*13);
+      const alpha = 0.45+(freq/maxF)*0.55;
+      const tag = document.createElement('span'); tag.className='word-tag';
+      tag.textContent = word;
+      tag.style.cssText = `font-size:${size}px;background:${bgColor};color:${textColor};border:1px solid ${borderColor}44;opacity:${alpha+0.25}`;
+      list.appendChild(tag);
+    });
+    div.appendChild(list); el.appendChild(div);
+  });
+}
+
+// ── AFFECTION ──
+function matchWords(text, words) { return words.reduce((c,w)=>c+(text.split(w).length-1),0); }
+function buildAffection(msgs, myMsgs, otherMsgs, me, other) {
+  const el = document.getElementById('affectionSection');
+  const myTotal = Math.max(1,myMsgs.length), otherTotal = Math.max(1,otherMsgs.length);
+  const otherText = otherMsgs.map(m=>m.content).join(' ');
+  const myText    = myMsgs.map(m=>m.content).join(' ');
+  const replyRatio     = Math.min(2,otherMsgs.length/myTotal);
+  const warmWords = ['哈哈','哈哈哈','好可愛','真的','超','好棒','厲害','喜歡','期待','謝謝','感謝','開心','太棒','哇','太好了','加油','支持','懂','有道理','對呀','對啊','嗯嗯','好的','好呀','好啊','沒問題'];
+  const warmScore      = Math.min(1,matchWords(otherText,warmWords)/Math.max(1,otherTotal)*15);
+  let otherInit=0; for(let i=1;i<msgs.length;i++) if(msgs[i].sender===other&&msgs[i-1].sender!==other) otherInit++;
+  const initiativeRatio = Math.min(1,otherInit/Math.max(1,otherTotal)*3);
+  const otherAvgLen = otherMsgs.reduce((s,m)=>s+m.content.length,0)/otherTotal;
+  const myAvgLen    = myMsgs.reduce((s,m)=>s+m.content.length,0)/myTotal;
+  const lenRatio    = Math.min(1.5,otherAvgLen/Math.max(1,myAvgLen))/1.5;
+  const questionScore  = Math.min(1,(otherText.match(/[？?]/g)||[]).length/otherTotal*3);
+  const coldWords = ['隨便','算了','沒差','不知道','嗯','ok','好','哦','哦哦','好吧','whatever'];
+  const coldPenalty    = Math.min(0.3,matchWords(otherText,coldWords)/otherTotal*5);
+  const raw   = (replyRatio*25)+(warmScore*30)+(initiativeRatio*20)+(lenRatio*15)+(questionScore*15)-(coldPenalty*30);
+  const score = Math.max(5,Math.min(98,Math.round(30+raw)));
+  const grade = score>=85?'非常喜歡 💕':score>=70?'頗有好感 😊':score>=55?'友好正向 🙂':score>=40?'普通關係 😐':'較為疏離 😶';
+  const summaryMap = [
+    [85,`從對話模式來看，${other} 對你展現出明顯的熱情與好感。他們主動發起話題的頻率較高，回覆內容積極且有溫度，顯示對方對你有強烈的興趣。`],
+    [70,`整體而言，${other} 對你持有正面的態度。回覆的主動性與內容豐富度高於平均，可以感受到對方在乎你的存在。`],
+    [55,`${other} 的態度友好且禮貌，熱情程度屬中等。對話中有一定的回應意願，關係目前偏向普通朋友，還有加深的空間。`],
+    [40,`${other} 的回應較為被動，話語也不夠豐富。可能是個性較為內斂，建議嘗試換個話題方向，看看能否激起更多共鳴。`],
+    [0,`${other} 的回覆普遍簡短，主動性偏低。建議多觀察互動狀況，或找到對方更感興趣的話題再判斷。`]
+  ];
+  const summary = summaryMap.find(([min])=>score>=min)[1];
+  el.innerHTML = `<div class="affection-wrap">
+    <div class="meter-score">${score}</div>
+    <div class="meter-label">好感指數（滿分 100）</div>
+    <div class="meter-track"><div class="meter-fill" style="width:${score}%"></div></div>
+    <div class="signals-grid">
+      <div class="signal-item"><div class="signal-val">${Math.round(replyRatio*50)}%</div><div class="signal-lbl">回覆積極度</div></div>
+      <div class="signal-item"><div class="signal-val">${Math.round(questionScore*100)}%</div><div class="signal-lbl">主動提問率</div></div>
+      <div class="signal-item"><div class="signal-val">${Math.round(initiativeRatio*100)}%</div><div class="signal-lbl">對話發起率</div></div>
+    </div>
+    <div class="affection-summary"><span class="affection-grade">${grade}</span><p>${summary}</p></div>
+  </div>`;
+}
+
+// ── TOPICS ──
+function buildTopics(msgs, myMsgs, otherMsgs, me, other) {
+  const el = document.getElementById('topicSection');
+  const topicDefs = [
+    { name:'日常生活',emoji:'☕',keys:['吃','喝','睡','買','逛','今天','昨天','明天','早餐','午餐','晚餐','咖啡','奶茶','天氣','出門','回家','班','上班','下班'] },
+    { name:'科技 / AI',emoji:'💻',keys:['AI','ChatGPT','Claude','程式','coding','app','手機','電腦','軟體','Github','Python','技術','開發','更新','系統','工具'] },
+    { name:'娛樂 / 追劇',emoji:'🎬',keys:['看','劇','電影','追','Netflix','影集','音樂','歌','演唱會','直播','遊戲','打','玩','LOL','電競'] },
+    { name:'工作 / 學業',emoji:'📋',keys:['工作','專案','報告','作業','考試','會議','客戶','老闆','deadline','壓力','學校','大學','研究','論文'] },
+    { name:'旅遊 / 出遊',emoji:'✈️',keys:['去','旅遊','旅行','玩','景點','機票','訂','飯店','台北','台中','高雄','日本','韓國','出國','假期'] },
+    { name:'美食 / 餐廳',emoji:'🍜',keys:['好吃','餐廳','美食','推薦','料理','甜點','火鍋','燒烤','壽司','拉麵','珍奶','手搖','外送'] },
+    { name:'心情 / 情感',emoji:'💭',keys:['感覺','心情','難過','開心','快樂','煩','壓力','累','焦慮','擔心','喜歡','在意','感謝','愛','想你'] },
+    { name:'運動 / 健身',emoji:'💪',keys:['運動','跑步','健身','gym','瑜珈','爬山','騎車','游泳','打球','籃球','足球','走路','步數'] }
+  ];
+  const otherText = otherMsgs.map(m=>m.content).join(' ');
+  const myText    = myMsgs.map(m=>m.content).join(' ');
+  const scored = topicDefs.map(t=>({ ...t, count:matchWords(otherText,t.keys), total:matchWords(otherText,t.keys)+matchWords(myText,t.keys) })).filter(t=>t.total>0).sort((a,b)=>b.count-a.count);
+  const maxCount = Math.max(1, scored[0]?.count||1);
+  const top6 = scored.slice(0,6);
+  const sugMap = {
+    '日常生活':{icon:'☕',tag:'日常',text:`聊聊最近的生活瑣事、今天吃了什麼，這類輕鬆話題讓 ${other} 感到自在。`},
+    '科技 / AI':{icon:'💻',tag:'科技',text:`分享你最近用過的 AI 工具或科技新聞，${other} 在這類話題上回應明顯更積極。`},
+    '娛樂 / 追劇':{icon:'🎬',tag:'娛樂',text:`問問 ${other} 最近在看什麼劇或聽什麼歌，共同的娛樂話題很容易拉近距離。`},
+    '工作 / 學業':{icon:'📋',tag:'工作',text:`適度關心對方的工作或學業進度，展現你的關心，但避免給對方壓力感。`},
+    '旅遊 / 出遊':{icon:'✈️',tag:'旅遊',text:`聊聊想去的地方或旅行計劃，甚至可以試探性地邀約一起出遊。`},
+    '美食 / 餐廳':{icon:'🍜',tag:'美食',text:`分享好吃的餐廳或詢問 ${other} 的美食推薦，這是很自然的共同話題。`},
+    '心情 / 情感':{icon:'💭',tag:'心情',text:`適時關心 ${other} 的心情狀態，展現真誠的在乎，但不要過度打探私人情緒。`},
+    '運動 / 健身':{icon:'💪',tag:'運動',text:`聊聊運動習慣或健康生活，可以作為約出去的自然理由。`}
+  };
+  const suggestions = scored.slice(0,3).map(t=>sugMap[t.name]).filter(Boolean);
+  if (otherMsgs.length < myMsgs.length * 0.6) suggestions.push({ icon:'🌟',tag:'小技巧',text:`${other} 主動發訊息的頻率較低，建議多製造「鉤子」——分享有趣的事情、問開放性問題。` });
+  suggestions.push({ icon:'⏰',tag:'時機',text:`觀察 ${other} 最常在哪個時段回覆最快最熱情，在那個時間段傳訊息往往效果更好。` });
+  suggestions.push({ icon:'🎯',tag:'建議',text:`避免連續問多個問題或傳過長的訊息，${other} 更容易回應輕鬆、簡短的話題拋出。` });
+  el.innerHTML = `<div style="font-size:.82rem;color:var(--text3);margin-bottom:1rem">${other} 最常談論的話題類型</div>
+    <div class="topic-grid">${top6.map(t=>`<div class="topic-item"><div class="topic-emoji">${t.emoji}</div><div style="flex:1;min-width:0"><div class="topic-name">${t.name}</div><div class="topic-bar-track"><div class="topic-bar-fill" style="width:${Math.round((t.count/maxCount)*100)}%"></div></div><div class="topic-pct">活躍度 ${Math.round((t.count/maxCount)*100)}%</div></div></div>`).join('')}</div>
+    <div class="suggestions"><div class="sug-label">💬 給你的聊天建議</div><div class="sug-list">${suggestions.slice(0,5).map(s=>`<div class="sug-item"><div class="sug-icon">${s.icon}</div><div class="sug-text"><span class="sug-tag">${s.tag}</span>${s.text}</div></div>`).join('')}</div></div>`;
+}
+
+// ── BIG FIVE ──
+function analyzeBigFive(msgs) {
+  const text = msgs.map(m=>m.content).join(' ');
+  const words = text.split(/[\s，。！？,.!?]+/).filter(Boolean);
+  const total = Math.max(1,words.length);
+  return {
+    openness:         Math.min(100,Math.round(40+(matchWords(text,['想','嘗試','新','不同','探索','學習','有趣','創意','好奇','覺得'])/total)*8000)),
+    conscientiousness:Math.min(100,Math.round(30+(matchWords(text,['應該','必須','計劃','完成','準時','認真','負責','記得','確認'])/total)*9000)),
+    extraversion:     Math.min(100,Math.round(25+(matchWords(text,['哈哈','哈','開心','好玩','一起','聚','玩','出去','活動','大家','朋友'])/total)*10000)),
+    agreeableness:    Math.min(100,Math.round(40+(matchWords(text,['好','謝謝','感謝','辛苦','幫','支持','沒關係','理解','體諒'])/total)*10000)),
+    neuroticism:      Math.min(100,Math.round(20+(matchWords(text,['擔心','焦慮','緊張','不安','害怕','煩','唉','慘','可惜','失望'])/total)*12000))
+  };
+}
+function buildBigFive(myMsgs, otherMsgs, me, other) {
+  const ms = analyzeBigFive(myMsgs), os = analyzeBigFive(otherMsgs);
+  const dims = [
+    {key:'openness',label:'開放性',en:'Openness'},
+    {key:'conscientiousness',label:'盡責性',en:'Conscientiousness'},
+    {key:'extraversion',label:'外傾性',en:'Extraversion'},
+    {key:'agreeableness',label:'宜人性',en:'Agreeableness'},
+    {key:'neuroticism',label:'神經質',en:'Neuroticism'}
+  ];
+  const el = document.getElementById('bigfiveSection');
+  const lv = s => s>=70?'高':s>=40?'中':'低';
+  el.innerHTML = `<div class="bigfive-compare" style="margin-bottom:.5rem">
+    <div style="text-align:right;font-size:.78rem;font-weight:500;color:var(--rose)">${me}</div>
+    <div></div>
+    <div style="text-align:left;font-size:.78rem;font-weight:500;color:var(--mauve)">${other}</div>
+  </div>` + dims.map(d=>{
+    const mv=ms[d.key], ov=os[d.key];
+    return `<div class="bigfive-compare">
+      <div class="bar-left"><span class="bar-score">${mv} ${lv(mv)}</span><div class="bar-fill" style="width:${mv*0.75}px"></div></div>
+      <div class="dim-label-center"><div style="font-size:.78rem;font-weight:500">${d.label}</div><div style="font-size:.67rem;color:var(--text3)">${d.en}</div></div>
+      <div class="bar-right"><div class="bar-fill" style="width:${ov*0.75}px;background:linear-gradient(90deg,var(--lilac),var(--mauve))"></div><span class="bar-score">${ov} ${lv(ov)}</span></div>
+    </div>`;
+  }).join('');
+}
+
+// ── MBTI ──
+function analyzeMBTI(msgs) {
+  const text = msgs.map(m=>m.content).join(' ');
+  const ie = matchWords(text,['我覺得','我認為','自己','獨自','安靜','思考','內心'])-matchWords(text,['大家','一起','熱鬧','社交','分享','哈哈哈','哈哈'])>0?'I':'E';
+  const ns = matchWords(text,['未來','趨勢','可能','也許','感覺','直覺','概念','想像'])-matchWords(text,['具體','事實','數據','步驟','細節','實際','怎麼做'])>0?'N':'S';
+  const tf = matchWords(text,['邏輯','分析','客觀','效率','結果','因此','所以'])-matchWords(text,['感受','理解','在意','支持','一起加油','希望你'])>0?'T':'F';
+  const jp = matchWords(text,['計劃','安排','確認','決定','要'])-matchWords(text,['看看','再說','隨便','彈性','感覺'])>0?'J':'P';
+  return ie+ns+tf+jp;
+}
+const mbtiDesc = {
+  INTJ:'戰略家型。獨立思考、長遠規劃，對目標有強烈執著。',INTP:'邏輯學家型。喜歡分析問題，思維靈活，追求知識。',
+  ENTJ:'指揮官型。天生領導者，決策果斷，目標導向。',ENTP:'辯論家型。思維活躍，喜歡挑戰傳統，充滿創意。',
+  INFJ:'提倡者型。有理想，有同理心，洞察力強。',INFP:'調停者型。富有想像力，重視個人價值觀與真誠。',
+  ENFJ:'主人公型。熱情有魅力，重視人際關係與他人成長。',ENFP:'競選者型。充滿熱情與創意，善於激勵他人。',
+  ISTJ:'物流師型。可靠負責，重視傳統與秩序。',ISFJ:'守護者型。溫暖貼心，默默奉獻，重視和諧。',
+  ESTJ:'總經理型。條理分明，重視規則與效率。',ESFJ:'執政官型。關心他人，重視社群和傳統。',
+  ISTP:'鑑賞家型。冷靜理性，擅長解決實際問題。',ISFP:'探險家型。溫和親切，活在當下，有藝術氣息。',
+  ESTP:'創業家型。喜歡行動，善於把握機會，精力充沛。',ESFP:'表演者型。熱愛生活，充滿活力，天生的娛樂者。'
+};
+function buildMBTI(myMsgs, otherMsgs, me, other) {
+  const myType = analyzeMBTI(myMsgs), otherType = analyzeMBTI(otherMsgs);
+  const el = document.getElementById('mbtiSection');
+  el.innerHTML = [[myType,me,'var(--rose)','var(--pink2)'],[otherType,other,'var(--mauve)','var(--lilac2)']].map(([type,user,color,bg])=>{
+    const dims = [
+      {dim:'內/外向',val:type[0],desc:type[0]==='I'?'偏內向，獨立思考':'偏外向，主動互動'},
+      {dim:'感知/直覺',val:type[1],desc:type[1]==='N'?'直覺導向，關注趨勢':'感知導向，重視細節'},
+      {dim:'思考/情感',val:type[2],desc:type[2]==='T'?'邏輯分析為主':'情感感受為主'},
+      {dim:'判斷/感知',val:type[3],desc:type[3]==='J'?'喜歡計劃和秩序':'彈性靈活，即興發揮'}
+    ];
+    return `<div class="mbti-card" style="background:${bg}">
+      <div class="mbti-type" style="color:${color}">${type}</div>
+      <div class="mbti-user" style="color:${color}bb">${user}</div>
+      <p class="mbti-desc">${mbtiDesc[type]||''}</p>
+      <div>${dims.map(d=>`<div class="mbti-dim"><span>${d.dim}</span><span class="dim-value" style="color:${color}">${d.val}</span><span style="color:var(--text3);font-size:.72rem;text-align:right;max-width:55%">${d.desc}</span></div>`).join('')}</div>
+    </div>`;
+  }).join('');
+}
+</script>
+</body>
+</html>
